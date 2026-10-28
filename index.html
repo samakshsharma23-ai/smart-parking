@@ -1,0 +1,305 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Parking System</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6fa;
+      color: #172033;
+    }
+
+    header {
+      background: #142d4e;
+      color: white;
+      padding: 24px 16px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+    }
+
+    main {
+      max-width: 850px;
+      margin: 25px auto;
+      padding: 0 16px;
+    }
+
+    .summary {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 18px;
+      flex: 1;
+      text-align: center;
+      box-shadow: 0 2px 8px #0000000d;
+    }
+
+    .number {
+      display: block;
+      font-size: 30px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .available-text {
+      color: #16803d;
+    }
+
+    .occupied-text {
+      color: #c52b35;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .slots {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .slot {
+      border: 0;
+      border-radius: 10px;
+      padding: 20px 10px;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: default;
+    }
+
+    .free {
+      background: #198754;
+    }
+
+    .busy {
+      background: #d9363e;
+    }
+
+    .slot small {
+      display: block;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .admin-button {
+      border: 0;
+      background: #142d4e;
+      color: white;
+      padding: 11px 15px;
+      border-radius: 8px;
+      margin: 5px 4px 5px 0;
+    }
+
+    .admin-button:hover {
+      opacity: 0.85;
+    }
+
+    .map-button {
+      display: inline-block;
+      padding: 12px 16px;
+      background: #1769aa;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+    }
+
+    .note {
+      color: #5c6677;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    @media (min-width: 600px) {
+      .slots {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Smart Parking System</h1>
+    <p>Find your parking space easily</p>
+  </header>
+
+  <main>
+    <section class="summary">
+      <div class="card">
+        Available
+        <span id="available" class="number available-text">7</span>
+      </div>
+
+      <div class="card">
+        Occupied
+        <span id="occupied" class="number occupied-text">3</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Parking Slots</h2>
+      <p class="note">Green = Available | Red = Occupied</p>
+      <div id="slots" class="slots"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Admin Panel</h2>
+      <p class="note">
+        Demo mode: choose a slot, then change its status.
+      </p>
+
+      <label for="slotChoice">Select slot:</label>
+      <select id="slotChoice">
+        <option value="0">Slot A1</option>
+        <option value="1">Slot A2</option>
+        <option value="2">Slot A3</option>
+        <option value="3">Slot A4</option>
+        <option value="4">Slot A5</option>
+        <option value="5">Slot B1</option>
+        <option value="6">Slot B2</option>
+        <option value="7">Slot B3</option>
+        <option value="8">Slot B4</option>
+        <option value="9">Slot B5</option>
+      </select>
+
+      <p>
+        <button class="admin-button" onclick="setStatus(false)">
+          Mark Available
+        </button>
+
+        <button class="admin-button" onclick="setStatus(true)">
+          Mark Occupied
+        </button>
+      </p>
+
+      <p id="message" class="note" aria-live="polite">
+        Select a slot to update its status.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Parking Location</h2>
+      <p class="note">
+        Demo map link. Replace this with your actual parking address.
+      </p>
+
+      <a
+        class="map-button"
+        href="https://www.google.com/maps/search/?api=1&query=parking+near+me"
+        target="_blank"
+        rel="noopener"
+      >
+        Open Google Maps
+      </a>
+    </section>
+  </main>
+
+  <script>
+    const initialSlots = [
+      false, true, false, false, true,
+      false, false, true, false, false
+    ];
+
+    let slots;
+
+    try {
+      const saved = localStorage.getItem("smartParkingSlots");
+      slots = saved ? JSON.parse(saved) : initialSlots.slice();
+
+      if (
+        !Array.isArray(slots) ||
+        slots.length !== 10 ||
+        !slots.every(value => typeof value === "boolean")
+      ) {
+        slots = initialSlots.slice();
+      }
+    } catch (error) {
+      slots = initialSlots.slice();
+    }
+
+    const slotNames = [
+      "A1", "A2", "A3", "A4", "A5",
+      "B1", "B2", "B3", "B4", "B5"
+    ];
+
+    function renderSlots() {
+      const container = document.getElementById("slots");
+      container.innerHTML = "";
+
+      slots.forEach((occupied, index) => {
+        const button = document.createElement("button");
+        button.className = "slot " + (occupied ? "busy" : "free");
+        button.setAttribute("aria-label",
+          "Slot " + slotNames[index] + ": " +
+          (occupied ? "Occupied" : "Available")
+        );
+
+        button.innerHTML =
+          "Slot " + slotNames[index] +
+          "<small>" +
+          (occupied ? "Occupied" : "Available") +
+          "</small>";
+
+        container.appendChild(button);
+      });
+
+      const occupiedCount = slots.filter(Boolean).length;
+
+      document.getElementById("occupied").textContent =
+        occupiedCount;
+
+      document.getElementById("available").textContent =
+        slots.length - occupiedCount;
+    }
+
+    function setStatus(occupied) {
+      const index = Number(
+        document.getElementById("slotChoice").value
+      );
+
+      slots[index] = occupied;
+      renderSlots();
+
+      try {
+        localStorage.setItem(
+          "smartParkingSlots",
+          JSON.stringify(slots)
+        );
+        document.getElementById("message").textContent =
+          "Slot " + slotNames[index] + " marked " +
+          (occupied ? "Occupied." : "Available.");
+      } catch (error) {
+        document.getElementById("message").textContent =
+          "Status updated for this session, but could not be saved.";
+      }
+    }
+
+    renderSlots();
+  </script>
+</body>
+</html>
